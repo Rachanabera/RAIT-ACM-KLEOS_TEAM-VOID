@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel Command Center — Admin Dashboard</title>
+<meta name="description" content="Sentinel v2.0 real-time safety intelligence command center for monitoring SOS events, user safety, and incident tracking.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#060610;--surface:rgba(17,17,28,0.85);--surface2:rgba(26,26,40,0.9);--surface-solid:#111118;--border:rgba(255,255,255,0.06);--border-hover:rgba(255,255,255,0.12);--accent:#e11d48;--accent2:#f43f5e;--accent-soft:rgba(225,29,72,0.12);--accent-glow:rgba(225,29,72,0.2);--text:#f0f0f5;--text2:#6b6b85;--text3:#44445a;--green:#10b981;--green-soft:rgba(16,185,129,0.12);--yellow:#f59e0b;--yellow-soft:rgba(245,158,11,0.12);--blue:#3b82f6;--blue-soft:rgba(59,130,246,0.12);--purple:#8b5cf6;--purple-soft:rgba(139,92,246,0.12);--cyan:#06b6d4;--cyan-soft:rgba(6,182,212,0.12);--radius:16px;--radius-sm:10px;--radius-xs:6px}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%, rgba(225,29,72,0.06) 0%, transparent 60%),radial-gradient(ellipse 60% 40% at 80% 100%, rgba(59,130,246,0.04) 0%, transparent 50%);pointer-events:none;z-index:0}
+
+/* Login */
+.login-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
+.login-overlay::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 40%, rgba(225,29,72,0.08) 0%, transparent 60%);pointer-events:none}
+.login-card{background:var(--surface);backdrop-filter:blur(40px);border:1px solid var(--border);border-radius:28px;padding:52px 44px;width:440px;max-width:92vw;text-align:center;position:relative;box-shadow:0 40px 100px rgba(0,0,0,0.5)}
+.login-card::before{content:'';position:absolute;inset:-1px;border-radius:28px;background:linear-gradient(135deg,rgba(225,29,72,0.2),transparent 40%,transparent 60%,rgba(59,130,246,0.1));z-index:-1;pointer-events:none}
+.login-shield{font-size:52px;margin-bottom:16px;display:block}
+.login-card h1{font-size:28px;font-weight:900;letter-spacing:4px;background:linear-gradient(135deg,#fff 20%,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.login-card .sub{color:var(--text2);margin-bottom:36px;font-size:13px;letter-spacing:0.5px}
+.login-card input{width:100%;padding:15px 20px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;margin-bottom:14px;outline:none;transition:.3s;font-family:'Inter',sans-serif}
+.login-card input::placeholder{color:var(--text3)}
+.login-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft),0 0 30px var(--accent-glow)}
+.login-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--accent),#be123c);border:none;border-radius:var(--radius-sm);color:#fff;font-weight:800;font-size:15px;letter-spacing:1.5px;cursor:pointer;transition:.3s;margin-top:8px;font-family:'Inter',sans-serif;position:relative;overflow:hidden}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px var(--accent-glow)}
+.login-btn:active{transform:translateY(0)}
+.login-error{color:var(--accent);font-size:13px;margin-top:14px;display:none;font-weight:500}
+
+/* Dashboard */
+.dashboard{display:none;min-height:100vh;position:relative;z-index:1}
+
+/* Topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:rgba(10,10,18,0.8);backdrop-filter:blur(30px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+.topbar-left{display:flex;align-items:center;gap:14px}
+.topbar-logo{font-size:22px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.topbar .right{display:flex;gap:10px;align-items:center}
+.live-badge{display:flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(0.7)}}
+.topbar-btn{background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:var(--radius-xs);cursor:pointer;font-weight:600;font-size:12px;transition:.2s;font-family:'Inter',sans-serif;letter-spacing:0.3px}
+.topbar-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.topbar-btn.logout:hover{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,0.1)}
+
+.content{padding:24px 28px;max-width:1500px;margin:0 auto}
+
+/* Stats Grid */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:14px;margin-bottom:28px}
+.stat-card{background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:.3s;cursor:default}
+.stat-card:hover{border-color:var(--border-hover);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.3)}
+.stat-card .accent-line{position:absolute;top:0;left:0;right:0;height:2px;border-radius:2px}
+.stat-card h3{font-size:11px;color:var(--text2);font-weight:600;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px}
+.stat-card .value{font-size:38px;font-weight:900;letter-spacing:-1px}
+.stat-card .sub{font-size:11px;color:var(--text3);margin-top:6px;font-weight:500}
+
+/* Section Headers */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.section-title{font-size:16px;font-weight:800;letter-spacing:0.5px;display:flex;align-items:center;gap:10px}
+.section-count{background:var(--accent-soft);color:var(--accent);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700}
+
+/* Tabs */
+.tabs{display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:4px;margin-bottom:24px;width:fit-content;backdrop-filter:blur(20px)}
+.tab{padding:10px 18px;border-radius:var(--radius-sm);font-weight:700;font-size:12px;cursor:pointer;color:var(--text2);transition:.2s;letter-spacing:.5px;white-space:nowrap;user-select:none}
+.tab.active{background:linear-gradient(135deg,var(--accent),#be123c);color:#fff;box-shadow:0 4px 15px var(--accent-glow)}
+.tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,0.03)}
+
+/* Table */
+.table-wrap{background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:rgba(255,255,255,0.02);padding:14px 18px;text-align:left;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase}
+td{padding:14px 18px;border-top:1px solid var(--border);font-size:13px;color:var(--text2)}
+tr{transition:.15s}
+tr:hover td{background:rgba(255,255,255,0.02);color:var(--text)}
+.status-badge{padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;display:inline-block;letter-spacing:0.5px}
+.status-active{background:var(--accent-soft);color:var(--accent)}
+.status-resolved{background:var(--green-soft);color:var(--green)}
+.status-false{background:rgba(136,136,160,.1);color:var(--text3)}
+.action-btn{padding:6px 14px;border-radius:var(--radius-xs);border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-weight:600;transition:.2s;margin-right:4px;font-family:'Inter',sans-serif}
+.action-btn:hover{transform:translateY(-1px)}
+.action-btn.resolve{border-color:rgba(16,185,129,0.3);color:var(--green)}
+.action-btn.resolve:hover{background:var(--green);color:#fff;box-shadow:0 4px 15px rgba(16,185,129,0.3)}
+.action-btn.dismiss:hover{background:var(--text3);color:#fff}
+
+/* Narrative */
+.narrative-box{background:rgba(225,29,72,0.04);border:1px solid rgba(225,29,72,0.1);border-radius:var(--radius-sm);padding:16px;margin-top:10px;font-size:12px;line-height:1.8;color:var(--text2);border-left:3px solid var(--accent);font-weight:400}
+
+/* Alert feed */
+.alert-feed{max-height:700px;overflow-y:auto;padding-right:4px}
+.alert-item{background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px;transition:.3s;position:relative;overflow:hidden}
+.alert-item:hover{border-color:var(--border-hover);box-shadow:0 8px 30px rgba(0,0,0,0.2)}
+.alert-item.critical{border-left:3px solid var(--accent)}
+.alert-item.critical::before{content:'';position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,var(--accent-glow),transparent 70%);pointer-events:none}
+.alert-item.resolved{opacity:.5}
+.alert-time{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.3px}
+.alert-user{font-weight:800;font-size:17px;margin:6px 0;color:var(--text)}
+.alert-trigger{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:0.3px}
+.alert-score{position:absolute;top:20px;right:20px;font-size:28px;font-weight:900;letter-spacing:-1px}
+.alert-location{font-size:11px;color:var(--text3);margin-top:4px;font-weight:500}
+.alert-actions{display:flex;gap:6px;margin-top:14px}
+
+/* Map Section */
+.map-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:24px;position:relative}
+.map-container .map-header{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.map-header-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.map-label{font-size:10px;color:var(--text3);font-weight:600;letter-spacing:0.5px;text-transform:uppercase}
+#sosMap{height:380px;width:100%;background:var(--bg)}
+.leaflet-container{background:var(--bg) !important}
+
+/* New alert notification */
+.new-alert-toast{position:fixed;top:80px;right:28px;background:linear-gradient(135deg,var(--accent),#be123c);color:#fff;padding:16px 24px;border-radius:var(--radius-sm);font-weight:700;font-size:13px;z-index:200;box-shadow:0 12px 40px var(--accent-glow);transform:translateX(150%);transition:transform .4s cubic-bezier(0.34,1.56,0.64,1);display:flex;align-items:center;gap:10px}
+.new-alert-toast.show{transform:translateX(0)}
+
+/* Empty */
+.empty{text-align:center;padding:70px 30px;color:var(--text3)}
+.empty .icon{font-size:52px;margin-bottom:18px;opacity:.6}
+.empty p{font-size:14px;font-weight:500}
+
+/* Export button */
+.export-btn{background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text2);padding:7px 14px;border-radius:var(--radius-xs);cursor:pointer;font-size:11px;font-weight:600;transition:.2s;font-family:'Inter',sans-serif}
+.export-btn:hover{border-color:var(--green);color:var(--green);background:var(--green-soft)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+/* Responsive */
+@media(max-width:900px){
+  .content{padding:16px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .topbar{padding:12px 16px}
+  .topbar-logo{font-size:16px;letter-spacing:2px}
+  .tabs{overflow-x:auto;width:100%}
+  .tab{padding:8px 14px;font-size:11px}
+  #sosMap{height:280px}
+  .stat-card .value{font-size:28px}
+}
+@media(max-width:500px){
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .stat-card{padding:16px}
+  .stat-card .value{font-size:24px}
+  .login-card{padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay">
+<div class="login-card">
+  <span class="login-shield">🛡️</span>
+  <h1>SENTINEL</h1>
+  <p class="sub">Command Center — Authorized Personnel Only</p>
+  <input type="email" id="loginEmail" placeholder="Admin Email" autocomplete="email">
+  <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+  <button class="login-btn" onclick="doLogin()" id="loginBtn">ACCESS COMMAND CENTER</button>
+  <div class="login-error" id="loginError">Invalid credentials. Access denied.</div>
+</div>
+</div>
+
+<!-- NEW ALERT TOAST -->
+<div class="new-alert-toast" id="alertToast">
+  <span>🚨</span>
+  <span id="toastText">New SOS alert received!</span>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-logo">🛡️ SENTINEL</span>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+  </div>
+  <div class="right">
+    <button class="topbar-btn" onclick="refreshData()">↻ Refresh</button>
+    <button class="topbar-btn" onclick="exportCSV()">⬇ Export</button>
+    <button class="topbar-btn logout" onclick="doLogout()">Logout</button>
+  </div>
+</div>
+
+<div class="content">
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <!-- Map -->
+  <div class="map-container" id="mapSection">
+    <div class="map-header">
+      <div class="map-header-title">📍 Live SOS Map</div>
+      <span class="map-label" id="mapEventCount">0 active events</span>
+    </div>
+    <div id="sosMap"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('alerts',this)" id="tab-btn-alerts">🚨 Live Alerts</div>
+    <div class="tab" onclick="switchTab('history',this)" id="tab-btn-history">📋 SOS History</div>
+    <div class="tab" onclick="switchTab('users',this)" id="tab-btn-users">👥 Users</div>
+    <div class="tab" onclick="switchTab('heatmap',this)" id="tab-btn-heatmap">🗺️ Incidents</div>
+  </div>
+
+  <!-- Tab Content -->
+  <div id="tab-alerts">
+    <div class="section-header">
+      <div class="section-title">Active Emergencies <span class="section-count" id="alertCount">0</span></div>
+    </div>
+    <div class="alert-feed" id="alertFeed"></div>
+  </div>
+
+  <div id="tab-history" style="display:none">
+    <div class="section-header">
+      <div class="section-title">SOS Event History</div>
+      <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+    <div class="table-wrap"><table id="historyTable"><thead><tr><th>ID</th><th>User</th><th>Trigger</th><th>Score</th><th>Location</th><th>Status</th><th>Time</th><th>Actions</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+  </div>
+
+  <div id="tab-users" style="display:none">
+    <div class="section-header">
+      <div class="section-title">Registered Users</div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Gender</th><th>Last Seen</th><th>Status</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+  </div>
+
+  <div id="tab-heatmap" style="display:none">
+    <div class="section-header">
+      <div class="section-title">Incident Analytics</div>
+    </div>
+    <div id="heatmapStats"></div>
+    <div class="table-wrap" style="margin-top:16px"><table><thead><tr><th>User</th><th>Trigger</th><th>Score</th><th>Location</th><th>Status</th><th>Time</th></tr></thead><tbody id="heatmapBody"></tbody></table></div>
+  </div>
+</div>
+</div>
+
+<script>
+const API = window.location.origin;
+let token = '';
+let refreshInterval;
+let sosMap = null;
+let mapMarkers = [];
+let lastAlertCount = 0;
+
+// ===== LOGIN =====
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'AUTHENTICATING...';
+  btn.disabled = true;
+  try{
+    const r = await fetch(`${API}/api/v1/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.detail || 'Login failed');
+    if(!d.user.is_admin) throw new Error('Admin access required');
+    token = d.token;
+    document.getElementById('loginOverlay').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    initMap();
+    refreshData();
+    refreshInterval = setInterval(refreshData, 6000);
+  }catch(e){
+    const el=document.getElementById('loginError');el.style.display='block';el.textContent=e.message;
+  }finally{
+    btn.textContent = 'ACCESS COMMAND CENTER';
+    btn.disabled = false;
+  }
+}
+
+// Handle Enter key on login
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('loginEmail').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginPass').focus(); });
+
+function doLogout(){
+  token='';clearInterval(refreshInterval);
+  document.getElementById('loginOverlay').style.display='flex';
+  document.getElementById('dashboard').style.display='none';
+}
+
+function headers(){return{'Content-Type':'application/json','Authorization':'Bearer '+token}}
+
+// ===== MAP =====
+function initMap(){
+  if(sosMap) return;
+  sosMap = L.map('sosMap',{zoomControl:true,attributionControl:false}).setView([19.0760,72.8777],11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(sosMap);
+  setTimeout(()=>sosMap.invalidateSize(),300);
+}
+
+function updateMapMarkers(alerts){
+  // Clear old
+  mapMarkers.forEach(m=>sosMap.removeLayer(m));
+  mapMarkers=[];
+  
+  if(!alerts.length) return;
+
+  const pulseIcon = L.divIcon({
+    className:'',
+    html:`<div style="width:20px;height:20px;border-radius:50%;background:rgba(225,29,72,0.9);box-shadow:0 0 20px rgba(225,29,72,0.6),0 0 60px rgba(225,29,72,0.3);animation:map-pulse 1.5s infinite;border:2px solid rgba(255,255,255,0.8)"></div>
+    <style>@keyframes map-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}</style>`,
+    iconSize:[20,20],iconAnchor:[10,10]
+  });
+
+  const resolvedIcon = L.divIcon({
+    className:'',
+    html:`<div style="width:12px;height:12px;border-radius:50%;background:rgba(16,185,129,0.8);border:2px solid rgba(255,255,255,0.5)"></div>`,
+    iconSize:[12,12],iconAnchor:[6,6]
+  });
+
+  alerts.forEach(a=>{
+    if(!a.latitude || !a.longitude) return;
+    const icon = a.status === 'active' ? pulseIcon : resolvedIcon;
+    const m = L.marker([a.latitude,a.longitude],{icon}).addTo(sosMap);
+    m.bindPopup(`<div style="font-family:Inter,sans-serif;min-width:200px">
+      <div style="font-weight:800;font-size:14px;margin-bottom:6px">${a.user_name}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:4px">${a.trigger_type}</div>
+      <div style="font-size:12px;color:#e11d48;font-weight:700">Score: ${a.confidence_score}%</div>
+      <div style="font-size:11px;color:#999;margin-top:4px">${new Date(a.created_at).toLocaleString()}</div>
+    </div>`);
+    mapMarkers.push(m);
+  });
+
+  // Fit bounds to active alerts
+  const activeAlerts = alerts.filter(a=>a.status==='active'&&a.latitude&&a.longitude);
+  if(activeAlerts.length){
+    const bounds = L.latLngBounds(activeAlerts.map(a=>[a.latitude,a.longitude]));
+    sosMap.fitBounds(bounds.pad(0.3));
+  }
+  
+  document.getElementById('mapEventCount').textContent = `${alerts.filter(a=>a.status==='active').length} active events`;
+}
+
+// ===== DATA REFRESH =====
+async function refreshData(){
+  try{
+    const [dashR,eventsR,usersR] = await Promise.all([
+      fetch(`${API}/api/v1/admin/dashboard`,{headers:headers()}),
+      fetch(`${API}/api/v1/admin/sos-events?limit=100`,{headers:headers()}),
+      fetch(`${API}/api/v1/admin/users`,{headers:headers()})
+    ]);
+    
+    if(!dashR.ok || !eventsR.ok || !usersR.ok){
+      if(dashR.status === 401 || eventsR.status === 401) doLogout();
+      return;
+    }
+    
+    const dash=await dashR.json(), events=await eventsR.json(), users=await usersR.json();
+    renderStats(dash.stats);
+    renderAlerts(dash.active_alerts);
+    renderHistory(events.events);
+    renderUsers(users.users);
+    renderHeatmap(events.events);
+    
+    if(sosMap) updateMapMarkers(events.events);
+    
+    // New alert notification
+    const newCount = dash.active_alerts?.length || 0;
+    if(newCount > lastAlertCount && lastAlertCount > 0){
+      showToast(`New SOS alert! ${newCount} active emergencies.`);
+      // Browser notification
+      if(Notification.permission === 'granted'){
+        new Notification('🚨 SENTINEL ALERT', {body:`New emergency detected. ${newCount} active alerts.`,icon:'🛡️'});
+      }
+    }
+    lastAlertCount = newCount;
+    
+  }catch(e){console.error('Refresh error:',e)}
+}
+
+// ===== TOAST =====
+function showToast(text){
+  const t = document.getElementById('alertToast');
+  document.getElementById('toastText').textContent = text;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 4000);
+}
+
+// ===== RENDER STATS =====
+function renderStats(s){
+  const g=document.getElementById('statsGrid');
+  const cards = [
+    {label:'Active SOS',value:s.active_sos,color:'var(--accent)',bg:'var(--accent-soft)',sub:'Needs immediate attention',accent:'var(--accent)'},
+    {label:'Total Users',value:s.total_users,color:'var(--blue)',bg:'var(--blue-soft)',sub:'Registered users',accent:'var(--blue)'},
+    {label:'Resolved',value:s.resolved_sos,color:'var(--green)',bg:'var(--green-soft)',sub:'Successfully handled',accent:'var(--green)'},
+    {label:'False Alarms',value:s.false_alarms,color:'var(--yellow)',bg:'var(--yellow-soft)',sub:'Filtered by confidence',accent:'var(--yellow)'},
+    {label:'Total SOS',value:s.total_sos,color:'var(--purple)',bg:'var(--purple-soft)',sub:'All time events',accent:'var(--purple)'},
+    {label:'Shadow Active',value:s.active_shadows,color:'var(--cyan)',bg:'var(--cyan-soft)',sub:'Being tracked',accent:'var(--cyan)'},
+    {label:'Incidents',value:s.total_incidents,color:'#ec4899',bg:'rgba(236,72,153,0.12)',sub:'Community reports',accent:'#ec4899'},
+  ];
+  g.innerHTML = cards.map(c=>`
+    <div class="stat-card">
+      <div class="accent-line" style="background:${c.accent}"></div>
+      <h3>${c.label}</h3>
+      <div class="value" style="color:${c.color}">${c.value}</div>
+      <div class="sub">${c.sub}</div>
+    </div>
+  `).join('');
+}
+
+// ===== RENDER ALERTS =====
+function renderAlerts(alerts){
+  const f=document.getElementById('alertFeed');
+  document.getElementById('alertCount').textContent = alerts.length;
+  
+  if(!alerts.length){
+    f.innerHTML=`<div class="empty"><div class="icon">✅</div><p>No active emergencies. All systems clear.</p></div>`;
+    return;
+  }
+  f.innerHTML=alerts.map(a=>`
+    <div class="alert-item critical">
+      <div class="alert-score" style="color:${a.confidence_score>=70?'var(--accent)':'var(--yellow)'}">${a.confidence_score||'?'}</div>
+      <div class="alert-time">${formatTime(a.created_at)}</div>
+      <div class="alert-user">🚨 ${a.user_name}</div>
+      <div class="alert-trigger">${a.trigger_type}</div>
+      <div class="alert-location">📍 ${a.latitude?.toFixed(5)||'—'}, ${a.longitude?.toFixed(5)||'—'}</div>
+      ${a.narrative?`<div class="narrative-box">${a.narrative}</div>`:''}
+      <div class="alert-actions">
+        <button class="action-btn resolve" onclick="resolveAlert(${a.id})">✓ Resolve & Close</button>
+        <button class="action-btn dismiss" onclick="dismissAlert(${a.id})">✕ False Alarm</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ===== RENDER HISTORY =====
+function renderHistory(events){
+  const b=document.getElementById('historyBody');
+  b.innerHTML=events.map(e=>{
+    const st=e.status==='active'?'status-active':e.status==='resolved'?'status-resolved':'status-false';
+    return`<tr>
+      <td style="font-weight:700;color:var(--text3)">#${e.id}</td>
+      <td style="font-weight:600;color:var(--text)">${e.user_name}</td>
+      <td>${e.trigger_type}</td>
+      <td><span style="font-weight:700;color:${e.confidence_score>=70?'var(--accent)':'var(--text2)'}">${e.confidence_score}</span></td>
+      <td style="font-size:11px">${e.latitude?.toFixed(4)||'—'}, ${e.longitude?.toFixed(4)||'—'}</td>
+      <td><span class="status-badge ${st}">${e.status.toUpperCase()}</span></td>
+      <td style="font-size:12px">${formatTime(e.created_at)}</td>
+      <td>${e.status==='active'?`<button class="action-btn resolve" onclick="resolveAlert(${e.id})">Resolve</button><button class="action-btn dismiss" onclick="dismissAlert(${e.id})">Dismiss</button>`:'-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== RENDER USERS =====
+function renderUsers(users){
+  const b=document.getElementById('usersBody');
+  if(!users.length){b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:50px">No users registered yet</td></tr>';return}
+  b.innerHTML=users.map(u=>`<tr>
+    <td style="font-weight:700;color:var(--text3)">#${u.id}</td>
+    <td style="font-weight:600;color:var(--text)">${u.name}</td>
+    <td>${u.email}</td>
+    <td>${u.phone||'—'}</td>
+    <td>${u.gender||'—'}</td>
+    <td style="font-size:12px">${u.last_seen?formatTime(u.last_seen):'<span style="color:var(--text3)">Never</span>'}</td>
+    <td><span class="status-badge ${u.is_active?'status-resolved':'status-false'}">${u.is_active?'ACTIVE':'DISABLED'}</span></td>
+  </tr>`).join('');
+}
+
+// ===== RENDER HEATMAP =====
+function renderHeatmap(events){
+  const s=document.getElementById('heatmapStats');
+  const byType={};
+  events.forEach(e=>{ byType[e.trigger_type]=(byType[e.trigger_type]||0)+1; });
+  if(Object.keys(byType).length){
+    s.innerHTML=`<div class="stats-grid">${Object.entries(byType).map(([k,v])=>`<div class="stat-card"><div class="accent-line" style="background:var(--accent)"></div><h3>${k}</h3><div class="value" style="font-size:28px;color:var(--accent)">${v}</div></div>`).join('')}</div>`;
+  } else {
+    s.innerHTML='';
+  }
+  const b=document.getElementById('heatmapBody');
+  if(!events.length){
+    b.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:50px">No incidents recorded yet</td></tr>';
+    return;
+  }
+  b.innerHTML=events.map(e=>{
+    const st=e.status==='active'?'status-active':e.status==='resolved'?'status-resolved':'status-false';
+    return`<tr>
+      <td style="font-weight:600">${e.user_name}</td>
+      <td>${e.trigger_type}</td>
+      <td><span style="font-weight:700;color:${e.confidence_score>=70?'var(--accent)':'var(--text2)'}">${e.confidence_score}</span></td>
+      <td style="font-size:11px">${e.latitude?.toFixed(4)||'—'}, ${e.longitude?.toFixed(4)||'—'}</td>
+      <td><span class="status-badge ${st}">${e.status.toUpperCase()}</span></td>
+      <td style="font-size:12px">${formatTime(e.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== ACTIONS =====
+async function resolveAlert(id){
+  await fetch(`${API}/api/v1/admin/resolve/${id}`,{method:'POST',headers:headers()});
+  showToast('Alert resolved successfully');
+  refreshData();
+}
+async function dismissAlert(id){
+  await fetch(`${API}/api/v1/admin/false-alarm/${id}`,{method:'POST',headers:headers()});
+  showToast('Marked as false alarm');
+  refreshData();
+}
+
+// ===== EXPORT =====
+function exportCSV(){
+  const table = document.getElementById('historyTable');
+  if(!table) return;
+  let csv = [];
+  const rows = table.querySelectorAll('tr');
+  rows.forEach(row => {
+    const cols = row.querySelectorAll('td,th');
+    const rowData = [];
+    cols.forEach(col => rowData.push('"'+col.textContent.replace(/"/g,'""')+'"'));
+    csv.push(rowData.join(','));
+  });
+  const blob = new Blob([csv.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `sentinel_sos_export_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ===== TABS =====
+function switchTab(name,el){
+  document.querySelectorAll('[id^="tab-"]').forEach(t=>{
+    if(!t.id.startsWith('tab-btn-')) t.style.display='none';
+  });
+  document.getElementById('tab-'+name).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ===== UTILITY =====
+function formatTime(ts){
+  if(!ts) return '—';
+  let d;
+  if (typeof ts === 'string' && !ts.endsWith('Z') && !ts.includes('+')) {
+    // Convert SQLite YYYY-MM-DD HH:MM:SS format to YYYY-MM-DDTHH:MM:SSZ to ensure it is parsed as UTC
+    const isoStr = ts.replace(' ', 'T') + 'Z';
+    d = new Date(isoStr);
+    if (isNaN(d.getTime())) {
+      d = new Date(ts);
+    }
+  } else {
+    d = new Date(ts);
+  }
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if(diff < 60) return 'Just now';
+  if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+// Request notification permission
+if('Notification' in window && Notification.permission === 'default'){
+  Notification.requestPermission();
+}
+</script>
+</body>
+</html>

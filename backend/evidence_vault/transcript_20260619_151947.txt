@@ -1,0 +1,3 @@
+Time: 20260619_151947
+Transcript: hello please help danger
+Matched: ['help', 'please help', 'danger']
